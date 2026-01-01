@@ -133,19 +133,21 @@ public final class EasyPVP extends JavaPlugin implements Listener {
         }
     }
 
-    public boolean canMoneyFit(Player p, int amount) {
-        ItemStack goldIngot = new ItemStack(Material.GOLD_INGOT);
+    public boolean canItemFit(Player p, int amount, int stackSize) {
+        ItemStack goldIngot = new ItemStack(Material.GOLD_INGOT); // was from preexisting code, this DOESNT give VALID money.
         ItemMeta meta = goldIngot.getItemMeta();
-        meta.setDisplayName(ChatColor.YELLOW + "Gold");
+        meta.setDisplayName(ChatColor.YELLOW + "THIS SHOULD BE HERE");
         meta.addEnchant(Enchantment.EFFICIENCY, 10, true);
         goldIngot.setItemMeta(meta);
+
+        goldIngot.setAmount(stackSize);
 
         int remaining = amount;
         for (ItemStack stack : p.getInventory().getContents()) {
             if (stack == null) {
-                remaining -= goldIngot.getMaxStackSize();
+                remaining -= stackSize;
             } else if (stack.isSimilar(goldIngot)) {
-                remaining -= (stack.getMaxStackSize() - stack.getAmount());
+                remaining -= (stackSize - stack.getAmount());
             }
 
             if (remaining <= 0) return true;
@@ -339,16 +341,25 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
             if (toolValue != 0){
                 if (pd.money >= (toolValue * amount)){
-                    if (canMoneyFit(((Player) sender).getPlayer(), amount)){
+                    Material mat;
+                    mat = Material.valueOf(args[0].toUpperCase());
+                    ItemStack item = new ItemStack(mat);
+
+                    if (canItemFit(((Player) sender).getPlayer(), amount, item.getMaxStackSize())){
                         pd.money -= (toolValue*amount);
 
-                        Material mat;
-                        mat = Material.valueOf(args[0].toUpperCase());
-                        ItemStack item = new ItemStack(mat);
-
-                        ((Player) sender).getInventory().addItem(item);
+                        for (int i = 0; i < amount; i++) {
+                            ((Player) sender).getInventory().addItem(item);
+                        }
 
                         update_Score_board(pd.kills, pd.deaths, pd.money, ((Player) sender).getPlayer());
+
+                        if (amount > 1){
+                            sender.sendMessage("§a[!] Successfully brought " + amount + " " +args[0].substring(0, 1).toUpperCase() + args[0].substring(1));
+                        }else{
+                            sender.sendMessage("§a[!] Successfully brought " + args[0].substring(0, 1).toUpperCase() + args[0].substring(1));
+                        }
+
                     }else {
                         sender.sendMessage("§c[!] Cannot fit Items!");
                     }
@@ -386,7 +397,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
             int amount = Integer.parseInt(args[0]);
 
             if (pd.money >= amount){
-                if (canMoneyFit(player, amount)){
+                if (canItemFit(player, amount, 64)){ // hardcoded, gold can only be in stacks of 64.
                     pd.money -= amount;
                     giveMoneyItem(player, amount);
                 }else{
