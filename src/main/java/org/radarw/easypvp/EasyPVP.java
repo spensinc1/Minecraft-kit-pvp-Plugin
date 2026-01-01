@@ -327,16 +327,38 @@ public final class EasyPVP extends JavaPlugin implements Listener {
             String uuid = ((Player) sender).getPlayer().getUniqueId().toString();
             PlayerData pd = dataMap.get(uuid);
 
+            int amount = 1; // default
+
+            if (args.length > 1) {
+                try {
+                    amount = Integer.parseInt(args[1]);
+                } catch (NumberFormatException e) {
+                    amount = 1;
+                }
+            }
+
             if (toolValue != 0){
-                pd.money -= toolValue;
+                if (pd.money >= (toolValue * amount)){
+                    if (canMoneyFit(((Player) sender).getPlayer(), amount)){
+                        pd.money -= (toolValue*amount);
 
-                Material mat;
-                mat = Material.valueOf(args[0].toUpperCase());
-                ItemStack item = new ItemStack(mat);
+                        Material mat;
+                        mat = Material.valueOf(args[0].toUpperCase());
+                        ItemStack item = new ItemStack(mat);
 
-                ((Player) sender).getInventory().addItem(item);
+                        ((Player) sender).getInventory().addItem(item);
 
-                update_Score_board(pd.kills, pd.deaths, pd.money, ((Player) sender).getPlayer());
+                        update_Score_board(pd.kills, pd.deaths, pd.money, ((Player) sender).getPlayer());
+                    }else {
+                        sender.sendMessage("§c[!] Cannot fit Items!");
+                    }
+
+                }else{
+                    sender.sendMessage("§c[!] You dont have enough gold!");
+                }
+
+            }else{
+                sender.sendMessage("§c[!] Invalid Item");
             }
         }
 
@@ -681,7 +703,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                         for (Enchantment Enchant : enchants){
                             int level = meta.getEnchantLevel(Enchant);
                             String enchantKey = Enchant.getKey().toString();
-                            List<Map<String, Integer>> levels = enchant_values.get(enchantKey); /// here !!
+                            List<Map<String, Integer>> levels = enchant_values.get(enchantKey);
                             // default if not found
                             if (levels != null) { // stopping here??????
                                 for (Map<String, Integer> map : levels) {
