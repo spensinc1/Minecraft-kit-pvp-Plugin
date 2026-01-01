@@ -1,0 +1,9 @@
+{
+  "minecraft:diamond_sword":10,
+  "minecraft:diamond_axe":20,
+  "minecraft:diamond_helmet":20,
+  "minecraft:diamond_chestplate":30,
+  "minecraft:diamond_leggings":20,
+  "minecraft:diamond_boots":20,
+  "minecraft:enchanted_golden_apple": 50
+}
