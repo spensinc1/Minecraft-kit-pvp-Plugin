@@ -10,6 +10,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.*;
@@ -303,6 +304,21 @@ public final class EasyPVP extends JavaPlugin implements Listener {
         return region.contains(point);
     }
 
+    protected ItemStack createGuiItem(final Material material, final String name, int amount, final String... lore) {
+        final ItemStack item = new ItemStack(material, amount);
+        final ItemMeta meta = item.getItemMeta();
+
+        // Set the name of the item
+        meta.setDisplayName(name);
+
+        // Set the lore of the item
+        meta.setLore(Arrays.asList(lore));
+
+        item.setItemMeta(meta);
+
+        return item;
+    }
+
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 
@@ -359,7 +375,6 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                         }else{
                             sender.sendMessage("§a[!] Successfully brought " + args[0].substring(0, 1).toUpperCase() + args[0].substring(1));
                         }
-
                     }else {
                         sender.sendMessage("§c[!] Cannot fit Items!");
                     }
@@ -497,9 +512,21 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                 sender.sendMessage("§c[!] Only players can use this command");
                 return false;
             }
-            sender.sendMessage("§c[!] we are working o this fuck off");
 
-            // wrapper for buy command???
+            if (!getRegions(((Player) sender).getPlayer(), "spawn")){
+                sender.sendMessage("§c[!] You have to be in spawn to execute this command!");
+                return false;
+            }
+
+            final Inventory inv;
+
+            inv = Bukkit.createInventory(null, 9, "Shop Menu"); // Equipment, Enchants and exit buttons. // fucking stupid inv size, must be mult of 9
+            Player player = (Player) sender;
+            player.openInventory(inv);
+
+            inv.addItem(createGuiItem(Material.DIAMOND_SWORD, "Equipment", 1,"§aBrowse Equipment", "§bBuy equipment to pvp with!"));
+            inv.addItem(createGuiItem(Material.ENCHANTED_BOOK, "Enchantments",1, "§aBrowse Enchantments", "§bBuy Enchantments to add to your Equipment!"));
+            inv.addItem(createGuiItem(Material.BARRIER, "Exit Menu",1, null, null)); // might be a error, check console.
         }
 
         if (cmd.getName().equalsIgnoreCase("kpdebug")){ // secret command
@@ -740,7 +767,73 @@ public final class EasyPVP extends JavaPlugin implements Listener {
         }
     }
 
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent e) {
+        if (e.getView() == null) return;
 
+        String title = ChatColor.stripColor(e.getView().getTitle());
+        Player p = (Player) e.getWhoClicked();
+
+        if (title.equals("Shop Menu")) {
+
+            String[] sixteen_sacks = {"arrow"};
+
+            e.setCancelled(true);
+
+            ItemStack clickedItem = e.getCurrentItem();
+            if (clickedItem == null || clickedItem.getType().isAir()) return;
+
+            if (clickedItem.getType() == Material.DIAMOND_SWORD) {
+                Inventory inv = Bukkit.createInventory(null, 27, "Equipment Menu");
+
+                for (Map.Entry<String, Integer> entry : item_values.entrySet()) {
+                    String key = entry.getKey();   // minecraft:whatever
+                    int value = entry.getValue();  // price
+
+                    Material material = Material.matchMaterial(key);
+
+                    if (material == null) continue;
+
+                    int amount = 1; // default amount
+
+                    String itemKey = key.contains(":") ? key.split(":")[1] : key; // inefficiency?
+
+                    for (String sack : sixteen_sacks) {
+                        if (sack.equals(itemKey)) {
+                            amount = 16;
+                            inv.addItem(createGuiItem(material, "§b" + material.getKey().getKey(), amount, "§bPrice: §e" + value * amount, null));
+                            break;
+                        }
+                    }
+
+                    if (amount != 16){
+                        inv.addItem(createGuiItem(material, "§b" + material.getKey().getKey(), amount, "§bPrice: §e" + value, null));
+                    }
+                }
+
+                p.openInventory(inv);
+            }
+        } else if (title.equals("Equipment Menu")) { // there is a click on an item
+            String[] sixteen_sacks = {"arrow"};
+            int amount = 1; // default amount
+
+            e.setCancelled(true);
+            ItemStack clickedItem = e.getCurrentItem();
+            if (clickedItem == null || clickedItem.getType().isAir()) return;
+
+            String itemKey = clickedItem.getType().getKey().getKey().toString();
+            for (String sack : sixteen_sacks) {
+                if (sack.equals(itemKey)) {
+                    amount = 16;
+                    break;
+                }
+            }
+
+            p.performCommand("buy " + clickedItem.getType().getKey().getKey().toString() + " " + amount); // execute buy commnad
+
+            // TODO play the little ding when a item is successfully brought
+        }
+    }
 
     public static Plugin getInstance() {
         return instance;
