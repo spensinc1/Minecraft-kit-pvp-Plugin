@@ -58,6 +58,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
     public Map<String, List<Map<String, Integer>>> enchant_values = new HashMap<>();
 
     public void loadItemValues() {
+        getInstance().saveResource("/tools.json", false);
         Gson gson = new Gson();
         try (FileReader reader = new FileReader(toolsFile)) {
             item_values = gson.fromJson(
@@ -69,9 +70,8 @@ public final class EasyPVP extends JavaPlugin implements Listener {
         }
     }
 
-    //save resourec when u have a chance xxxxx
-
     public void loadEnchantValues() {
+        getInstance().saveResource("/enchants.json", false);
         Gson gson = new Gson();
         try (FileReader reader = new FileReader(enchantsFile)) {
             enchant_values = gson.fromJson(
@@ -308,14 +308,16 @@ public final class EasyPVP extends JavaPlugin implements Listener {
         final ItemStack item = new ItemStack(material, amount);
         final ItemMeta meta = item.getItemMeta();
 
-        // Set the name of the item
-        meta.setDisplayName(name);
+        if (name != null){
+            meta.setDisplayName(name);
+        }else{
+            meta.setDisplayName("Item!");
+        }
 
-        // Set the lore of the item
-        meta.setLore(Arrays.asList(lore));
-
+        if (lore != null){
+            meta.setLore(Arrays.asList(lore));
+        }
         item.setItemMeta(meta);
-
         return item;
     }
 
@@ -371,8 +373,10 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                         update_Score_board(pd.kills, pd.deaths, pd.money, ((Player) sender).getPlayer());
 
                         if (amount > 1){
+                            ((Player) sender).getPlayer().playSound(((Player) sender).getPlayer().getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 0, 0);
                             sender.sendMessage("§a[!] Successfully brought " + amount + " " +args[0].substring(0, 1).toUpperCase() + args[0].substring(1));
                         }else{
+                            ((Player) sender).getPlayer().playSound(((Player) sender).getPlayer().getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 0, 0);
                             sender.sendMessage("§a[!] Successfully brought " + args[0].substring(0, 1).toUpperCase() + args[0].substring(1));
                         }
                     }else {
@@ -526,7 +530,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
             inv.addItem(createGuiItem(Material.DIAMOND_SWORD, "Equipment", 1,"§aBrowse Equipment", "§bBuy equipment to pvp with!"));
             inv.addItem(createGuiItem(Material.ENCHANTED_BOOK, "Enchantments",1, "§aBrowse Enchantments", "§bBuy Enchantments to add to your Equipment!"));
-            inv.addItem(createGuiItem(Material.BARRIER, "Exit Menu",1, null, null)); // might be a error, check console.
+            inv.addItem(createGuiItem(Material.BARRIER, "Exit",1, null, null)); // might be a error, check console.
         }
 
         if (cmd.getName().equalsIgnoreCase("kpdebug")){ // secret command
@@ -812,6 +816,26 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                 }
 
                 p.openInventory(inv);
+            } else if (clickedItem.getType() == Material.BARRIER) {
+                e.getWhoClicked().closeInventory();
+            } else if (clickedItem.getType() == Material.ENCHANTED_BOOK) {
+                Inventory inv = Bukkit.createInventory(null, 9, "Enchant Menu");
+
+                for (Map.Entry<String, List<Map<String, Integer>>> entry : enchant_values.entrySet()) {
+                    String key = entry.getKey();   // minecraft:whatever
+
+                    Material material = Material.matchMaterial(key);
+
+                    if (material == null) continue;
+
+                    int amount = 1; // default amount
+
+                    String itemKey = key.contains(":") ? key.split(":")[1] : key; // inefficiency?
+
+                    inv.addItem(createGuiItem(Material.ENCHANTED_BOOK, "§b" + material.getKey().getKey(), amount, null, null));
+                }
+
+                p.openInventory(inv);
             }
         } else if (title.equals("Equipment Menu")) { // there is a click on an item
             String[] sixteen_sacks = {"arrow"};
@@ -830,8 +854,6 @@ public final class EasyPVP extends JavaPlugin implements Listener {
             }
 
             p.performCommand("buy " + clickedItem.getType().getKey().getKey().toString() + " " + amount); // execute buy commnad
-
-            // TODO play the little ding when a item is successfully brought
         }
     }
 
