@@ -1,6 +1,7 @@
 package org.radarw.easypvp;
 
 import org.bukkit.*;
+import org.bukkit.Bukkit;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -230,7 +231,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
                 PlayerData data = null; // wouldn't exist as this is a new file
                 UUID fakePlayer = UUID.fromString("738eaf75-2a10-4756-887f-30f76e4ee744");
-                data = new PlayerData(fakePlayer, 0, 0, 0);
+                data = new PlayerData(fakePlayer, 0, 0, 0, 0);
                 dataMap.put(String.valueOf(fakePlayer), data);
 
                 saveData();
@@ -370,7 +371,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                             ((Player) sender).getInventory().addItem(item);
                         }
 
-                        update_Score_board(pd.kills, pd.deaths, pd.money, ((Player) sender).getPlayer());
+                        update_Score_board(pd.kills, pd.deaths, pd.money, ((Player) sender).getPlayer(), pd.killStreak);
 
                         if (amount > 1){
                             ((Player) sender).getPlayer().playSound(((Player) sender).getPlayer().getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 0, 0);
@@ -427,7 +428,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                 sender.sendMessage("§c[!] Not Enough gold!");
                 return false;
             }
-            update_Score_board(pd.kills, pd.deaths, pd.money, player);
+            update_Score_board(pd.kills, pd.deaths, pd.money, player, pd.killStreak);
             return true;
         }
 
@@ -502,12 +503,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                 sender.sendMessage("§a[!] Deposited " + amount + " gold!");
             }
 
-            update_Score_board(pd.kills, pd.deaths, pd.money, player);
-            return true;
-        }
-
-        if (cmd.getName().equalsIgnoreCase("amialive")) {
-            sender.sendMessage("Hey there! You ran the /hello command.");
+            update_Score_board(pd.kills, pd.deaths, pd.money, player, pd.killStreak);
             return true;
         }
 
@@ -613,7 +609,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
         return false;
     }
 
-    public void update_Score_board(int kills, int deaths, int money, Player player) {
+    public void update_Score_board(int kills, int deaths, int money, Player player, int killStreak) {
         Scoreboard board = Bukkit.getScoreboardManager().getNewScoreboard();
 
         Objective obj = board.registerNewObjective(
@@ -650,6 +646,14 @@ public final class EasyPVP extends JavaPlugin implements Listener {
         obj.getScore(kdrEntry).setScore(1);
         obj.getScore(moneyEntry).setScore(0);
 
+        if (killStreak >= 2){
+            Team killStreakTeam = board.registerNewTeam("killstreak");
+            String killStreakEntry = ChatColor.GREEN + "Kill streak:";
+            killStreakTeam.addEntry(killsEntry);
+            killStreakTeam.setSuffix(ChatColor.WHITE + " " + killStreak);
+            obj.getScore(killStreakEntry).setScore(-1);
+        }
+
         player.setScoreboard(board);
     }
 
@@ -674,16 +678,33 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                 PlayerData vd = dataMap.get(victim.getUniqueId().toString());
 
                 kd.kills++;
-
+                kd.killStreak++;
                 vd.deaths++;
+                vd.killStreak = 0;
 
-                update_Score_board(kd.kills, kd.deaths, kd.money, killer);
-                update_Score_board(vd.kills, vd.deaths, vd.money, victim);
+                update_Score_board(kd.kills, kd.deaths, kd.money, killer, kd.killStreak);
+                update_Score_board(vd.kills, vd.deaths, vd.money, victim, vd.killStreak);
+
+                int[] ranges = {5, 10, 15, 20, 30, 40, 50, 75, 100, 150, 175, 180, 200};
+
+                for(int i = 0; i < ranges.length; i++){
+                    if (ranges[i] == kd.killStreak){
+                        Bukkit.broadcastMessage("[!] " + killer.getName() + " HAS A " + ranges[i] + " KILL STREAK!!");
+                        if (i > 2){ // award 200 if a milestone is reached
+                            killer.sendMessage("[!] Awarded 200 Gold for your" + kd.killStreak + " kill streak!");
+                            kd.money += 200;
+                        }
+                        if (kd.killStreak > 30){
+                            kd.money += ranges[i];
+                        }
+                    }
+                }
+
             }else{
                 victim.sendMessage("[!] You Died!");
                 PlayerData vd = dataMap.get(victim.getUniqueId().toString());
                 vd.deaths++;
-                update_Score_board(vd.kills, vd.deaths, vd.money, victim);
+                update_Score_board(vd.kills, vd.deaths, vd.money, victim, vd.killStreak);
             }
             Bukkit.getScheduler().runTaskLater(instance, victim.spigot()::respawn, 1);
             spawnMoneyItem(victim.getLocation(), 5);
@@ -700,9 +721,9 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
         PlayerData data = dataMap.get(uuid);
         if (data == null && dataMap != null) {
-            data = new PlayerData(p.getUniqueId(), 0, 0, 0);
+            data = new PlayerData(p.getUniqueId(), 0, 0, 0, 0);
             dataMap.put(uuid, data);
-            p.sendMessage("Welcome!");
+            Bukkit.broadcastMessage("[!] Welcome " + p.getName() + "!");
         } else {
             p.sendMessage("Welcome back!");
         }
@@ -711,7 +732,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
             p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");
         }
 
-        update_Score_board(data.kills, data.deaths, data.money, p);
+        update_Score_board(data.kills, data.deaths, data.money, p, data.killStreak);
     }
 
     @EventHandler
@@ -767,7 +788,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
             e.getPlayer().sendMessage("[!] Sold for " + TotalVal);
             pd.money += TotalVal;
             HumanEntity player = e.getPlayer();
-            update_Score_board(pd.kills, pd.deaths, pd.money, (Player) player);
+            update_Score_board(pd.kills, pd.deaths, pd.money, (Player) player, pd.killStreak);
         }
     }
 
