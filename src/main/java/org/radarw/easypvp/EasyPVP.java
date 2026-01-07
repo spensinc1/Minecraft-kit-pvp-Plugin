@@ -697,6 +697,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                         }
                         if (kd.killStreak > 30){
                             kd.money += ranges[i];
+                            killer.sendMessage("[!] Awarded" +  ranges[i] + " Extra Gold for your" + kd.killStreak + " kill streak!");
                         }
                         if (kd.killStreak < ranges[i+1]){
                             break;
