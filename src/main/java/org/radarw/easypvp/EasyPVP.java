@@ -240,7 +240,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
             } catch (IOException e) {
                 e.printStackTrace();
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "stop"); // if this fails, we are screwed. better to stop the server inorder to let admins know
-                // there is a dangerous problem with their config.
+                // there is a dangerous problem with config.
             }
         } else {
             Bukkit.getConsoleSender().sendMessage("DATAMAP FOUND!");
@@ -312,7 +312,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
         if (name != null){
             meta.setDisplayName(name);
         }else{
-            meta.setDisplayName("Item!");
+            meta.setDisplayName("Item");
         }
 
         if (lore != null){
@@ -326,7 +326,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 
         // NOTICE: This command is backend FOR the /shop feature. This has been exposed for ease of use, and mods can interact with this
-        // to give players features such as quick buying gear and loot.
+        // to give players features such as quick buying gear and loot, exposed not fully supported.
 
         if (cmd.getName().equalsIgnoreCase("buy")){
             if (!(sender instanceof Player)) {
@@ -391,6 +391,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
             }else{
                 sender.sendMessage("§c[!] Invalid Item");
             }
+            return true;
         }
 
         if (cmd.getName().equalsIgnoreCase("withdraw")) {
@@ -697,9 +698,11 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                         if (kd.killStreak > 30){
                             kd.money += ranges[i];
                         }
+                        if (kd.killStreak < ranges[i+1]){
+                            break;
+                        }
                     }
                 }
-
             }else{
                 victim.sendMessage("[!] You Died!");
                 PlayerData vd = dataMap.get(victim.getUniqueId().toString());
@@ -731,7 +734,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
         if (dataMap == null){
             p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");
         }
-
+        data.killStreak = 0;
         update_Score_board(data.kills, data.deaths, data.money, p, data.killStreak);
     }
 
