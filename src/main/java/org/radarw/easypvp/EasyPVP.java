@@ -252,7 +252,6 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                 // TODO: improve this as this is a very hacky soultion, in a ideal world this shouldnt be a thing.
 
                 dataMap_snapshot.remove("738eaf75-2a10-4756-887f-30f76e4ee744"); // !!SNAPSHOT!!, DO NOT WORK ON "dataMap".
-
                 if (dataMap_snapshot != null){
                     Bukkit.getConsoleSender().sendMessage("Real Data created! Removing empty Player...");
                     dataMap.remove("738eaf75-2a10-4756-887f-30f76e4ee744");
@@ -527,7 +526,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
             inv.addItem(createGuiItem(Material.DIAMOND_SWORD, "Equipment", 1,"§aBrowse Equipment", "§bBuy equipment to pvp with!"));
             inv.addItem(createGuiItem(Material.ENCHANTED_BOOK, "Enchantments",1, "§aBrowse Enchantments", "§bBuy Enchantments to add to your Equipment!"));
-            inv.addItem(createGuiItem(Material.BARRIER, "Exit",1, null, null)); // might be a error, check console.
+            inv.addItem(createGuiItem(Material.BARRIER, "Exit",1, null, null));
         }
 
         if (cmd.getName().equalsIgnoreCase("kpdebug")){ // secret command
