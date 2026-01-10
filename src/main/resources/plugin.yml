@@ -21,3 +21,4 @@ commands:
   sellitems:
   buy:
   shop:
+  dropdata:

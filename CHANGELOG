@@ -1,0 +1,7 @@
+- Saved resources to server plugin folder
+
+- Added change log (hi)
+
+- updated createGuiItem to handle null args
+
+- added async saving

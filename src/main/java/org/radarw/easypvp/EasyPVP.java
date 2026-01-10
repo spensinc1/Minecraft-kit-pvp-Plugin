@@ -1,6 +1,7 @@
 package org.radarw.easypvp;
 
 import org.bukkit.*;
+import org.bukkit.Bukkit;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -58,6 +59,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
     public Map<String, List<Map<String, Integer>>> enchant_values = new HashMap<>();
 
     public void loadItemValues() {
+        //getInstance().saveResource("/tools.json", false);
         Gson gson = new Gson();
         try (FileReader reader = new FileReader(toolsFile)) {
             item_values = gson.fromJson(
@@ -69,9 +71,8 @@ public final class EasyPVP extends JavaPlugin implements Listener {
         }
     }
 
-    //save resourec when u have a chance xxxxx
-
     public void loadEnchantValues() {
+        //getInstance().saveResource("/enchants.json", false);
         Gson gson = new Gson();
         try (FileReader reader = new FileReader(enchantsFile)) {
             enchant_values = gson.fromJson(
@@ -86,12 +87,20 @@ public final class EasyPVP extends JavaPlugin implements Listener {
     public boolean areanstate = true; // true = open, false = closed
 
     public void saveData() { // hash map --> file
-        try (FileWriter writer = new FileWriter(dataFile)) {
-            gson.toJson(dataMap, writer);
-            Bukkit.getServer().getConsoleSender().sendMessage("SAVED DATA MAP.");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                Map<String, PlayerData> snapshot = dataMap;
+                try (FileWriter writer = new FileWriter(dataFile)) {
+                    gson.toJson(snapshot, writer);
+                    Bukkit.getServer().getConsoleSender().sendMessage("SAVED DATA MAP.");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                snapshot.clear();
+                snapshot = null;
+            }
+        }.runTaskAsynchronously(this);
     }
 
     public void loadData() { // file --> hash map
@@ -230,7 +239,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
                 PlayerData data = null; // wouldn't exist as this is a new file
                 UUID fakePlayer = UUID.fromString("738eaf75-2a10-4756-887f-30f76e4ee744");
-                data = new PlayerData(fakePlayer, 0, 0, 0);
+                data = new PlayerData(fakePlayer, 0, 0, 0, 0);
                 dataMap.put(String.valueOf(fakePlayer), data);
 
                 saveData();
@@ -239,7 +248,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
             } catch (IOException e) {
                 e.printStackTrace();
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "stop"); // if this fails, we are screwed. better to stop the server inorder to let admins know
-                // there is a dangerous problem with their config.
+                // there is a dangerous problem with config.
             }
         } else {
             Bukkit.getConsoleSender().sendMessage("DATAMAP FOUND!");
@@ -251,7 +260,6 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                 // TODO: improve this as this is a very hacky soultion, in a ideal world this shouldnt be a thing.
 
                 dataMap_snapshot.remove("738eaf75-2a10-4756-887f-30f76e4ee744"); // !!SNAPSHOT!!, DO NOT WORK ON "dataMap".
-
                 if (dataMap_snapshot != null){
                     Bukkit.getConsoleSender().sendMessage("Real Data created! Removing empty Player...");
                     dataMap.remove("738eaf75-2a10-4756-887f-30f76e4ee744");
@@ -308,14 +316,16 @@ public final class EasyPVP extends JavaPlugin implements Listener {
         final ItemStack item = new ItemStack(material, amount);
         final ItemMeta meta = item.getItemMeta();
 
-        // Set the name of the item
-        meta.setDisplayName(name);
+        if (name != null){
+            meta.setDisplayName(name);
+        }else{
+            meta.setDisplayName("Item");
+        }
 
-        // Set the lore of the item
-        meta.setLore(Arrays.asList(lore));
-
+        if (lore != null){
+            meta.setLore(Arrays.asList(lore));
+        }
         item.setItemMeta(meta);
-
         return item;
     }
 
@@ -323,7 +333,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 
         // NOTICE: This command is backend FOR the /shop feature. This has been exposed for ease of use, and mods can interact with this
-        // to give players features such as quick buying gear and loot.
+        // to give players features such as quick buying gear and loot, exposed not fully supported.
 
         if (cmd.getName().equalsIgnoreCase("buy")){
             if (!(sender instanceof Player)) {
@@ -368,11 +378,13 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                             ((Player) sender).getInventory().addItem(item);
                         }
 
-                        update_Score_board(pd.kills, pd.deaths, pd.money, ((Player) sender).getPlayer());
+                        update_Score_board(pd.kills, pd.deaths, pd.money, ((Player) sender).getPlayer(), pd.killStreak);
 
                         if (amount > 1){
+                            ((Player) sender).getPlayer().playSound(((Player) sender).getPlayer().getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 0, 0);
                             sender.sendMessage("§a[!] Successfully brought " + amount + " " +args[0].substring(0, 1).toUpperCase() + args[0].substring(1));
                         }else{
+                            ((Player) sender).getPlayer().playSound(((Player) sender).getPlayer().getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, 0, 0);
                             sender.sendMessage("§a[!] Successfully brought " + args[0].substring(0, 1).toUpperCase() + args[0].substring(1));
                         }
                     }else {
@@ -386,6 +398,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
             }else{
                 sender.sendMessage("§c[!] Invalid Item");
             }
+            return true;
         }
 
         if (cmd.getName().equalsIgnoreCase("withdraw")) {
@@ -423,7 +436,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                 sender.sendMessage("§c[!] Not Enough gold!");
                 return false;
             }
-            update_Score_board(pd.kills, pd.deaths, pd.money, player);
+            update_Score_board(pd.kills, pd.deaths, pd.money, player, pd.killStreak);
             return true;
         }
 
@@ -498,12 +511,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                 sender.sendMessage("§a[!] Deposited " + amount + " gold!");
             }
 
-            update_Score_board(pd.kills, pd.deaths, pd.money, player);
-            return true;
-        }
-
-        if (cmd.getName().equalsIgnoreCase("amialive")) {
-            sender.sendMessage("Hey there! You ran the /hello command.");
+            update_Score_board(pd.kills, pd.deaths, pd.money, player, pd.killStreak);
             return true;
         }
 
@@ -526,7 +534,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
             inv.addItem(createGuiItem(Material.DIAMOND_SWORD, "Equipment", 1,"§aBrowse Equipment", "§bBuy equipment to pvp with!"));
             inv.addItem(createGuiItem(Material.ENCHANTED_BOOK, "Enchantments",1, "§aBrowse Enchantments", "§bBuy Enchantments to add to your Equipment!"));
-            inv.addItem(createGuiItem(Material.BARRIER, "Exit Menu",1, null, null)); // might be a error, check console.
+            inv.addItem(createGuiItem(Material.BARRIER, "Exit",1, null, null));
         }
 
         if (cmd.getName().equalsIgnoreCase("kpdebug")){ // secret command
@@ -540,8 +548,53 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                 return false;
             }
 
+            if (args[0].equalsIgnoreCase("dropdata")) { // this is mostly for debugging, dumb way
+                if (!sender.isOp()) {
+                    sender.sendMessage("§cNo Permissions");
+                    return false;
+                }
+
+                if (args[1].equalsIgnoreCase("IKNOWWHATIMDOING")) { // check
+                    dataMap.clear();
+                    dataMap_snapshot.clear();
+
+                    PlayerData data = null;
+                    UUID fakePlayer = UUID.fromString("738eaf75-2a10-4756-887f-30f76e4ee744");
+                    data = new PlayerData(fakePlayer, 0, 0, 0, 0);
+                    dataMap.put(String.valueOf(fakePlayer), data);
+
+                    sender.sendMessage("§cData dropped");
+
+                    for (Player p : Bukkit.getOnlinePlayers()){ // attempt to recover session by reinitializing database
+                        String uuid = p.getUniqueId().toString();
+                        data = new PlayerData(p.getUniqueId(), 0, 0, 0, 0);
+                        dataMap.put(uuid, data);
+                        update_Score_board(0,0,0,(Player) sender,0);
+                    }
+
+                    dataMap_snapshot = dataMap;
+                    dataMap_snapshot.remove("738eaf75-2a10-4756-887f-30f76e4ee744");
+
+                    if (dataMap.get("738eaf75-2a10-4756-887f-30f76e4ee744") != null && dataMap_snapshot != null){
+                        dataMap.remove("738eaf75-2a10-4756-887f-30f76e4ee744"); // clean up
+                    }
+
+                    saveData();
+                    loadData();
+                    return true;
+                }else{
+                    sender.sendMessage("§cWRONG SENDER ARGS");
+                }
+            }
+
+
             if (args[0].equalsIgnoreCase("savedata")) {
                 if (args[1].equalsIgnoreCase("CONFIRM")) { // check
+                    if (!sender.isOp()) {
+                        sender.sendMessage("§cNo Permissions");
+                        return false;
+                    }
+
                     saveData();
                     sender.sendMessage("§csaved");
                     return true;
@@ -550,6 +603,11 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
             if (args[0].equalsIgnoreCase("loaddata")) {
                 if (args[1].equalsIgnoreCase("CONFIRM")) { // check
+                    if (!sender.isOp()) {
+                        sender.sendMessage("§cNo Permissions");
+                        return false;
+                    }
+
                     loadData();
                     sender.sendMessage("§cloaded");
                     return true;
@@ -609,7 +667,8 @@ public final class EasyPVP extends JavaPlugin implements Listener {
         return false;
     }
 
-    public void update_Score_board(int kills, int deaths, int money, Player player) {
+    public void update_Score_board(int kills, int deaths, int money, Player player, int killStreak) {
+        int shift = 0;
         Scoreboard board = Bukkit.getScoreboardManager().getNewScoreboard();
 
         Objective obj = board.registerNewObjective(
@@ -641,10 +700,19 @@ public final class EasyPVP extends JavaPlugin implements Listener {
         kdrTeam.setSuffix(ChatColor.WHITE + " " + String.format("%.3f", kdRatioNum));
         moneyTeam.setSuffix(ChatColor.WHITE + " " + money);
 
-        obj.getScore(killsEntry).setScore(3);   // higher = top
-        obj.getScore(deathsEntry).setScore(2);
-        obj.getScore(kdrEntry).setScore(1);
-        obj.getScore(moneyEntry).setScore(0);
+        if (killStreak >= 2){
+            shift = 1;
+            Team killStreakTeam = board.registerNewTeam("killstreak");
+            String killStreakEntry = ChatColor.GREEN + "Streak:";
+            killStreakTeam.addEntry(killStreakEntry);
+            killStreakTeam.setSuffix(ChatColor.WHITE + " " + killStreak);
+            obj.getScore(killStreakEntry).setScore(0);
+        }
+
+        obj.getScore(killsEntry).setScore(3 + shift);   // higher = top
+        obj.getScore(deathsEntry).setScore(2 + shift);
+        obj.getScore(kdrEntry).setScore(1 + shift);
+        obj.getScore(moneyEntry).setScore(0 + shift);
 
         player.setScoreboard(board);
     }
@@ -670,16 +738,36 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                 PlayerData vd = dataMap.get(victim.getUniqueId().toString());
 
                 kd.kills++;
-
+                kd.killStreak++;
                 vd.deaths++;
+                vd.killStreak = 0;
 
-                update_Score_board(kd.kills, kd.deaths, kd.money, killer);
-                update_Score_board(vd.kills, vd.deaths, vd.money, victim);
+                update_Score_board(kd.kills, kd.deaths, kd.money, killer, kd.killStreak);
+                update_Score_board(vd.kills, vd.deaths, vd.money, victim, vd.killStreak);
+
+                int[] ranges = {5, 10, 15, 20, 30, 40, 50, 75, 100, 150, 175, 180, 200};
+
+                for(int i = 0; i < ranges.length; i++){
+                    if (ranges[i] == kd.killStreak){
+                        Bukkit.broadcastMessage("[!] " + killer.getName() + " HAS A " + ranges[i] + " KILL STREAK!!");
+                        if (i > 2){ // award 200 if a milestone is reached
+                            killer.sendMessage("[!] Awarded 200 Gold for your" + kd.killStreak + " kill streak!");
+                            kd.money += 200;
+                        }
+                        if (kd.killStreak > 5){
+                            kd.money += ranges[i];
+                            killer.sendMessage("[!] Awarded" +  ranges[i] + " Extra Gold for your" + kd.killStreak + " kill streak!");
+                        }
+                        if (kd.killStreak < ranges[i+1]){
+                            break;
+                        }
+                    }
+                }
             }else{
                 victim.sendMessage("[!] You Died!");
                 PlayerData vd = dataMap.get(victim.getUniqueId().toString());
                 vd.deaths++;
-                update_Score_board(vd.kills, vd.deaths, vd.money, victim);
+                update_Score_board(vd.kills, vd.deaths, vd.money, victim, vd.killStreak);
             }
             Bukkit.getScheduler().runTaskLater(instance, victim.spigot()::respawn, 1);
             spawnMoneyItem(victim.getLocation(), 5);
@@ -696,9 +784,9 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
         PlayerData data = dataMap.get(uuid);
         if (data == null && dataMap != null) {
-            data = new PlayerData(p.getUniqueId(), 0, 0, 0);
+            data = new PlayerData(p.getUniqueId(), 0, 0, 0, 0);
             dataMap.put(uuid, data);
-            p.sendMessage("Welcome!");
+            Bukkit.broadcastMessage("[!] Welcome " + p.getName() + "!");
         } else {
             p.sendMessage("Welcome back!");
         }
@@ -706,8 +794,8 @@ public final class EasyPVP extends JavaPlugin implements Listener {
         if (dataMap == null){
             p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");p.sendMessage("DATAMAP IS EMPTY, CONTACT SOMEONE ABOUT THIS!");
         }
-
-        update_Score_board(data.kills, data.deaths, data.money, p);
+        data.killStreak = 0;
+        update_Score_board(data.kills, data.deaths, data.money, p, data.killStreak);
     }
 
     @EventHandler
@@ -763,7 +851,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
             e.getPlayer().sendMessage("[!] Sold for " + TotalVal);
             pd.money += TotalVal;
             HumanEntity player = e.getPlayer();
-            update_Score_board(pd.kills, pd.deaths, pd.money, (Player) player);
+            update_Score_board(pd.kills, pd.deaths, pd.money, (Player) player, pd.killStreak);
         }
     }
 
@@ -812,6 +900,35 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                 }
 
                 p.openInventory(inv);
+            } else if (clickedItem.getType() == Material.BARRIER) {
+                e.getWhoClicked().closeInventory();
+            } else if (clickedItem.getType() == Material.ENCHANTED_BOOK) {
+                Inventory inv = Bukkit.createInventory(null, 9, "Enchant Menu");
+
+                if (title == "Enchant Menu"){ // we are already in the menu.
+                    inv.remove(Material.ENCHANTED_BOOK);
+                }
+
+                for (Map.Entry<String, List<Map<String, Integer>>> entry : enchant_values.entrySet()) {
+                    String key = entry.getKey(); // minecraft:sharpness
+
+                    // Convert namespaced key safely
+                    NamespacedKey namespacedKey = NamespacedKey.fromString(key);
+                    if (namespacedKey == null) continue;
+
+                    Material material = Material.matchMaterial(namespacedKey.getKey());
+                    if (material == null) continue;
+
+                    inv.addItem(
+                            createGuiItem(
+                                    Material.ENCHANTED_BOOK,
+                                    "§b" + namespacedKey.getKey(),
+                                    1
+                            )
+                    );
+                }
+
+                p.openInventory(inv);
             }
         } else if (title.equals("Equipment Menu")) { // there is a click on an item
             String[] sixteen_sacks = {"arrow"};
@@ -830,8 +947,6 @@ public final class EasyPVP extends JavaPlugin implements Listener {
             }
 
             p.performCommand("buy " + clickedItem.getType().getKey().getKey().toString() + " " + amount); // execute buy commnad
-
-            // TODO play the little ding when a item is successfully brought
         }
     }
 
