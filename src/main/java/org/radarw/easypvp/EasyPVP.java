@@ -59,7 +59,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
     public Map<String, List<Map<String, Integer>>> enchant_values = new HashMap<>();
 
     public void loadItemValues() {
-        getInstance().saveResource("/tools.json", false);
+        //getInstance().saveResource("/tools.json", false);
         Gson gson = new Gson();
         try (FileReader reader = new FileReader(toolsFile)) {
             item_values = gson.fromJson(
@@ -72,7 +72,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
     }
 
     public void loadEnchantValues() {
-        getInstance().saveResource("/enchants.json", false);
+        //getInstance().saveResource("/enchants.json", false);
         Gson gson = new Gson();
         try (FileReader reader = new FileReader(enchantsFile)) {
             enchant_values = gson.fromJson(
@@ -87,12 +87,20 @@ public final class EasyPVP extends JavaPlugin implements Listener {
     public boolean areanstate = true; // true = open, false = closed
 
     public void saveData() { // hash map --> file
-        try (FileWriter writer = new FileWriter(dataFile)) {
-            gson.toJson(dataMap, writer);
-            Bukkit.getServer().getConsoleSender().sendMessage("SAVED DATA MAP.");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                Map<String, PlayerData> snapshot = dataMap;
+                try (FileWriter writer = new FileWriter(dataFile)) {
+                    gson.toJson(snapshot, writer);
+                    Bukkit.getServer().getConsoleSender().sendMessage("SAVED DATA MAP.");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                snapshot.clear();
+                snapshot = null;
+            }
+        }.runTaskAsynchronously(this);
     }
 
     public void loadData() { // file --> hash map
@@ -540,8 +548,53 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                 return false;
             }
 
+            if (args[0].equalsIgnoreCase("dropdata")) { // this is mostly for debugging, dumb way
+                if (!sender.isOp()) {
+                    sender.sendMessage("§cNo Permissions");
+                    return false;
+                }
+
+                if (args[1].equalsIgnoreCase("IKNOWWHATIMDOING")) { // check
+                    dataMap.clear();
+                    dataMap_snapshot.clear();
+
+                    PlayerData data = null;
+                    UUID fakePlayer = UUID.fromString("738eaf75-2a10-4756-887f-30f76e4ee744");
+                    data = new PlayerData(fakePlayer, 0, 0, 0, 0);
+                    dataMap.put(String.valueOf(fakePlayer), data);
+
+                    sender.sendMessage("§cData dropped");
+
+                    for (Player p : Bukkit.getOnlinePlayers()){ // attempt to recover session by reinitializing database
+                        String uuid = p.getUniqueId().toString();
+                        data = new PlayerData(p.getUniqueId(), 0, 0, 0, 0);
+                        dataMap.put(uuid, data);
+                        update_Score_board(0,0,0,(Player) sender,0);
+                    }
+
+                    dataMap_snapshot = dataMap;
+                    dataMap_snapshot.remove("738eaf75-2a10-4756-887f-30f76e4ee744");
+
+                    if (dataMap.get("738eaf75-2a10-4756-887f-30f76e4ee744") != null && dataMap_snapshot != null){
+                        dataMap.remove("738eaf75-2a10-4756-887f-30f76e4ee744"); // clean up
+                    }
+
+                    saveData();
+                    loadData();
+                    return true;
+                }else{
+                    sender.sendMessage("§cWRONG SENDER ARGS");
+                }
+            }
+
+
             if (args[0].equalsIgnoreCase("savedata")) {
                 if (args[1].equalsIgnoreCase("CONFIRM")) { // check
+                    if (!sender.isOp()) {
+                        sender.sendMessage("§cNo Permissions");
+                        return false;
+                    }
+
                     saveData();
                     sender.sendMessage("§csaved");
                     return true;
@@ -550,6 +603,11 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
             if (args[0].equalsIgnoreCase("loaddata")) {
                 if (args[1].equalsIgnoreCase("CONFIRM")) { // check
+                    if (!sender.isOp()) {
+                        sender.sendMessage("§cNo Permissions");
+                        return false;
+                    }
+
                     loadData();
                     sender.sendMessage("§cloaded");
                     return true;
@@ -610,6 +668,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
     }
 
     public void update_Score_board(int kills, int deaths, int money, Player player, int killStreak) {
+        int shift = 0;
         Scoreboard board = Bukkit.getScoreboardManager().getNewScoreboard();
 
         Objective obj = board.registerNewObjective(
@@ -641,18 +700,19 @@ public final class EasyPVP extends JavaPlugin implements Listener {
         kdrTeam.setSuffix(ChatColor.WHITE + " " + String.format("%.3f", kdRatioNum));
         moneyTeam.setSuffix(ChatColor.WHITE + " " + money);
 
-        obj.getScore(killsEntry).setScore(3);   // higher = top
-        obj.getScore(deathsEntry).setScore(2);
-        obj.getScore(kdrEntry).setScore(1);
-        obj.getScore(moneyEntry).setScore(0);
-
         if (killStreak >= 2){
+            shift = 1;
             Team killStreakTeam = board.registerNewTeam("killstreak");
-            String killStreakEntry = ChatColor.GREEN + "Kill streak:";
-            killStreakTeam.addEntry(killsEntry);
+            String killStreakEntry = ChatColor.GREEN + "Streak:";
+            killStreakTeam.addEntry(killStreakEntry);
             killStreakTeam.setSuffix(ChatColor.WHITE + " " + killStreak);
-            obj.getScore(killStreakEntry).setScore(-1);
+            obj.getScore(killStreakEntry).setScore(0);
         }
+
+        obj.getScore(killsEntry).setScore(3 + shift);   // higher = top
+        obj.getScore(deathsEntry).setScore(2 + shift);
+        obj.getScore(kdrEntry).setScore(1 + shift);
+        obj.getScore(moneyEntry).setScore(0 + shift);
 
         player.setScoreboard(board);
     }
@@ -694,7 +754,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                             killer.sendMessage("[!] Awarded 200 Gold for your" + kd.killStreak + " kill streak!");
                             kd.money += 200;
                         }
-                        if (kd.killStreak > 30){
+                        if (kd.killStreak > 5){
                             kd.money += ranges[i];
                             killer.sendMessage("[!] Awarded" +  ranges[i] + " Extra Gold for your" + kd.killStreak + " kill streak!");
                         }
@@ -845,18 +905,27 @@ public final class EasyPVP extends JavaPlugin implements Listener {
             } else if (clickedItem.getType() == Material.ENCHANTED_BOOK) {
                 Inventory inv = Bukkit.createInventory(null, 9, "Enchant Menu");
 
+                if (title == "Enchant Menu"){ // we are already in the menu.
+                    inv.remove(Material.ENCHANTED_BOOK);
+                }
+
                 for (Map.Entry<String, List<Map<String, Integer>>> entry : enchant_values.entrySet()) {
-                    String key = entry.getKey();   // minecraft:whatever
+                    String key = entry.getKey(); // minecraft:sharpness
 
-                    Material material = Material.matchMaterial(key);
+                    // Convert namespaced key safely
+                    NamespacedKey namespacedKey = NamespacedKey.fromString(key);
+                    if (namespacedKey == null) continue;
 
+                    Material material = Material.matchMaterial(namespacedKey.getKey());
                     if (material == null) continue;
 
-                    int amount = 1; // default amount
-
-                    String itemKey = key.contains(":") ? key.split(":")[1] : key; // inefficiency?
-
-                    inv.addItem(createGuiItem(Material.ENCHANTED_BOOK, "§b" + material.getKey().getKey(), amount, null, null));
+                    inv.addItem(
+                            createGuiItem(
+                                    Material.ENCHANTED_BOOK,
+                                    "§b" + namespacedKey.getKey(),
+                                    1
+                            )
+                    );
                 }
 
                 p.openInventory(inv);
