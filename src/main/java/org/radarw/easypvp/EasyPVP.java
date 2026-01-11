@@ -30,6 +30,7 @@ import com.google.gson.reflect.TypeToken;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scoreboard.*;
 
+import javax.json.Json;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -102,15 +103,16 @@ public final class EasyPVP extends JavaPlugin implements Listener {
             }
         }.runTaskAsynchronously(this);
     }
-
-    public void loadData() { // file --> hash map
+it
+    public void loadData(Player player) { // file --> hash map
+        String[] data;
         if (!dataFile.exists()) return;
         try (FileReader reader = new FileReader(dataFile)) {
             Type type = new TypeToken<Map<String, PlayerData>>() {}.getType();
-            dataMap = gson.fromJson(reader, type);
+            data = gson.fromJson(reader, type);
+            data[]
         } catch (IOException e) {
             e.printStackTrace();
-
         }
     }
 
