@@ -1,5 +1,6 @@
 package org.radarw.easypvp;
 
+import com.google.gson.JsonObject;
 import org.bukkit.*;
 import org.bukkit.Bukkit;
 import org.bukkit.attribute.Attribute;
@@ -90,10 +91,12 @@ public final class EasyPVP extends JavaPlugin implements Listener {
     public void saveData() { // hash map --> file
         new BukkitRunnable() {
             @Override
-            public void run() {
+            public void run() { // for entry check aganst data file
                 Map<String, PlayerData> snapshot = dataMap;
                 try (FileWriter writer = new FileWriter(dataFile)) {
-                    gson.toJson(snapshot, writer);
+                    for (String key : dataMap.keySet()){ // data in the hash map
+
+                    }
                     Bukkit.getServer().getConsoleSender().sendMessage("SAVED DATA MAP.");
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -103,17 +106,28 @@ public final class EasyPVP extends JavaPlugin implements Listener {
             }
         }.runTaskAsynchronously(this);
     }
-it
+
     public void loadData(Player player) { // file --> hash map
-        String[] data;
         if (!dataFile.exists()) return;
         try (FileReader reader = new FileReader(dataFile)) {
-            Type type = new TypeToken<Map<String, PlayerData>>() {}.getType();
-            data = gson.fromJson(reader, type);
-            data[]
+            JsonObject json = gson.fromJson(reader, JsonObject.class);
+
+            String uuid = player.getUniqueId().toString();
+            if (!json.has(uuid)) return;
+
+            JsonObject playerJson = json.getAsJsonObject(uuid);
+
+            PlayerData data = gson.fromJson(playerJson, PlayerData.class);
+            dataMap.put(String.valueOf(player.getUniqueId()), data);
+
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void unloadData(Player player){
+        saveData();
+        dataMap.remove(player.getUniqueId());
     }
 
     public void spawnMoneyItem(Location Loc, int amount){
@@ -254,7 +268,9 @@ it
             }
         } else {
             Bukkit.getConsoleSender().sendMessage("DATAMAP FOUND!");
-            loadData();
+            for (Player p : Bukkit.getOnlinePlayers()){
+                loadData(p);
+            }
             if (dataMap.get("738eaf75-2a10-4756-887f-30f76e4ee744") != null){ // if 738eaf75-2a10-4756-887f-30f76e4ee744 is still in the code:
                 dataMap_snapshot = dataMap; // copy datamap, we don't want to work on live data.
 
@@ -582,7 +598,10 @@ it
                     }
 
                     saveData();
-                    loadData();
+
+                    for(Player p : Bukkit.getOnlinePlayers()){
+                        loadData(p);
+                    }
                     return true;
                 }else{
                     sender.sendMessage("§cWRONG SENDER ARGS");
@@ -610,7 +629,9 @@ it
                         return false;
                     }
 
-                    loadData();
+                    for (Player p : Bukkit.getOnlinePlayers()){
+                        loadData(p);
+                    }
                     sender.sendMessage("§cloaded");
                     return true;
                 }
