@@ -32,10 +32,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scoreboard.*;
 
 import javax.json.Json;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.lang.reflect.Type;
 import java.util.*;
 
@@ -93,16 +90,31 @@ public final class EasyPVP extends JavaPlugin implements Listener {
             @Override
             public void run() { // for entry check aganst data file
                 Map<String, PlayerData> snapshot = dataMap;
-                try (FileWriter writer = new FileWriter(dataFile)) {
-                    for (String key : dataMap.keySet()){ // data in the hash map
+                JsonObject json = new JsonObject();
+                Gson gson = new Gson();
+                try (FileReader reader = new FileReader(dataFile)) { // get entire json object
+                     json = gson.fromJson(reader, JsonObject.class);
+                }catch (IOException e) {
+                    e.printStackTrace();
+                }
 
+                if (!json.isEmpty()){
+
+                }else{
+                    Bukkit.getServer().getConsoleSender().sendMessage("SOMETHING WENT WRONG SAVING CURRENT DATA");
+                }
+
+                try (FileWriter writer = new FileWriter(dataFile)) {
+                    for (String key : dataMap.keySet()){ // all data in the hash map
+                        json.remove(key);
+                        PlayerData pd = dataMap.get(key);
+                        json.add(key, );
                     }
                     Bukkit.getServer().getConsoleSender().sendMessage("SAVED DATA MAP.");
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
                 snapshot.clear();
-                snapshot = null;
             }
         }.runTaskAsynchronously(this);
     }
@@ -377,7 +389,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
             if (args.length > 1) {
                 try {
-                    amount = Integer.parseInt(args[1]);
+                    amount = parseInt(args[1]);
                 } catch (NumberFormatException e) {
                     amount = 1;
                 }
@@ -440,7 +452,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
             // example usage
             PlayerData pd = dataMap.get(uuid.toString());
-            int amount = Integer.parseInt(args[0]);
+            int amount = parseInt(args[0]);
 
             if (pd.money >= amount){
                 if (canItemFit(player, amount, 64)){ // hardcoded, gold can only be in stacks of 64.
@@ -472,7 +484,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
             int amount;
             try {
-                amount = Integer.parseInt(args[1]);
+                amount = parseInt(args[1]);
             } catch (NumberFormatException e) {
                 sender.sendMessage("§cInvalid amount!");
                 return false;
@@ -516,7 +528,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
             // example usage
             PlayerData pd = dataMap.get(uuid.toString());
-            int amount = Integer.parseInt(args[0]);
+            int amount = parseInt(args[0]);
             int playerAmount = getItemAmount(player); // true val
 
             if (playerAmount < amount) {
