@@ -26,8 +26,11 @@ import com.sk89q.worldguard.protection.regions.ProtectedRegion;
 import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.math.BlockVector3;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scoreboard.*;
 
@@ -85,7 +88,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
     public boolean areanstate = true; // true = open, false = closed
 
-    public void saveData() { // hash map --> file
+    public void saveData() { // hash map --> file // DANGER: THIS SHIT IS UNTESTED!!!!!!!
         new BukkitRunnable() {
             @Override
             public void run() { // for entry check aganst data file
@@ -98,17 +101,17 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                     e.printStackTrace();
                 }
 
-                if (!json.isEmpty()){
-
-                }else{
-                    Bukkit.getServer().getConsoleSender().sendMessage("SOMETHING WENT WRONG SAVING CURRENT DATA");
+                if (json.isEmpty()){
+                    Bukkit.getServer().getConsoleSender().sendMessage("SOMETHING WENT WRONG SAVING CURRENT DATA PANIC PANIC PANIC");
                 }
 
                 try (FileWriter writer = new FileWriter(dataFile)) {
                     for (String key : dataMap.keySet()){ // all data in the hash map
                         json.remove(key);
                         PlayerData pd = dataMap.get(key);
-                        json.add(key, );
+                        String jsonString = "{'uuid':" + key + ",'kills':"+pd.kills+",'deaths':"+pd.deaths+"'money':"+pd.money+"'money':"+pd.killStreak+"}";
+                        JsonObject jsonObject = (JsonObject) JsonParser.parseString(jsonString);
+                        json.add(key, jsonObject);
                     }
                     Bukkit.getServer().getConsoleSender().sendMessage("SAVED DATA MAP.");
                 } catch (IOException e) {
