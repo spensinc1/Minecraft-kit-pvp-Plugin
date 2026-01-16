@@ -112,6 +112,10 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                         String jsonString = "{'uuid':" + key + ",'kills':"+pd.kills+",'deaths':"+pd.deaths+"'money':"+pd.money+"'money':"+pd.killStreak+"}";
                         JsonObject jsonObject = (JsonObject) JsonParser.parseString(jsonString);
                         json.add(key, jsonObject);
+
+                        // put JSON into data.json
+
+
                     }
                     Bukkit.getServer().getConsoleSender().sendMessage("SAVED DATA MAP.");
                 } catch (IOException e) {
@@ -598,7 +602,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
                     sender.sendMessage("§cData dropped");
 
-                    for (Player p : Bukkit.getOnlinePlayers()){ // attempt to recover session by reinitializing database
+                    for (Player p : Bukkit.getOnlinePlayers()){ // attempt to recover session by reinitializing database // TODO: update this with database fix, idk if compatable, too tired to do this rn.
                         String uuid = p.getUniqueId().toString();
                         data = new PlayerData(p.getUniqueId(), 0, 0, 0, 0);
                         dataMap.put(uuid, data);
@@ -680,7 +684,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                 new BukkitRunnable() {
                     @Override
                     public void run(){
-                        if (areanstate == false){
+                        if (!areanstate){
                             for (Player p : Bukkit.getOnlinePlayers()) {
                                 if (getRegions(p, "pvparea") && !getRegions(p, "spawn") && p.getGameMode() == GameMode.SURVIVAL) {
                                     p.teleport(new Location(p.getWorld(), 15, -55, 5));
