@@ -106,17 +106,15 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                 }
 
                 try (FileWriter writer = new FileWriter(dataFile)) {
-                    for (String key : dataMap.keySet()){ // all data in the hash map
+                    for (String key : snapshot.keySet()){ // all data in the hash map // using "snapshot", but can be replaced with datamap.
                         json.remove(key);
-                        PlayerData pd = dataMap.get(key);
-                        String jsonString = "{'uuid':" + key + ",'kills':"+pd.kills+",'deaths':"+pd.deaths+"'money':"+pd.money+"'money':"+pd.killStreak+"}";
+                        PlayerData pd = snapshot.get(key);
+                        String jsonString = "{'uuid':" + key + ",'kills':"+pd.kills+",'deaths':"+pd.deaths+"'money':"+pd.money+"'money':"+pd.killStreak+"}"; // may be malformed, check
                         JsonObject jsonObject = (JsonObject) JsonParser.parseString(jsonString);
                         json.add(key, jsonObject);
-
-                        // put JSON into data.json
-
-
                     }
+                    gson.toJson(json, writer);
+
                     Bukkit.getServer().getConsoleSender().sendMessage("SAVED DATA MAP.");
                 } catch (IOException e) {
                     e.printStackTrace();
