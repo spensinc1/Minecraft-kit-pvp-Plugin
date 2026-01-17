@@ -109,9 +109,16 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                     for (String key : snapshot.keySet()){ // all data in the hash map // using "snapshot", but can be replaced with datamap.
                         json.remove(key);
                         PlayerData pd = snapshot.get(key);
-                        String jsonString = "{'uuid':" + key + ",'kills':"+pd.kills+",'deaths':"+pd.deaths+"'money':"+pd.money+"'money':"+pd.killStreak+"}"; // may be malformed, check
-                        JsonObject jsonObject = (JsonObject) JsonParser.parseString(jsonString);
+
+                        JsonObject jsonObject = new JsonObject();
+                        jsonObject.addProperty("uuid", key);
+                        jsonObject.addProperty("kills", pd.kills);
+                        jsonObject.addProperty("deaths", pd.deaths);
+                        jsonObject.addProperty("money", pd.money);
+                        jsonObject.addProperty("killStreak", pd.killStreak);
+
                         json.add(key, jsonObject);
+                        Bukkit.getServer().getConsoleSender().sendMessage(key);
                     }
                     gson.toJson(json, writer);
 
@@ -275,6 +282,16 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                 data = new PlayerData(fakePlayer, 0, 0, 0, 0);
                 dataMap.put(String.valueOf(fakePlayer), data);
 
+                Map<String, PlayerData> snapshot = dataMap;
+                try (FileWriter writer = new FileWriter(dataFile)) { // manually save map
+                    gson.toJson(snapshot, writer);
+                    Bukkit.getServer().getConsoleSender().sendMessage("SAVED DATA MAP MANUALLY.");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                snapshot.clear();
+                snapshot = null;
+
                 saveData();
 
                 Bukkit.getConsoleSender().sendMessage("CREATED DATAMAP & DATAFILE!");
@@ -292,13 +309,14 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                 dataMap_snapshot = dataMap; // copy datamap, we don't want to work on live data.
 
                 // this uuid is a banned account, we just need it for this purpose. we dont really care abt this data as it will never be used.
-                // TODO: improve this as this is a very hacky soultion, in a ideal world this shouldnt be a thing.
+                // TODO: this doesnt work with the database fix
 
                 dataMap_snapshot.remove("738eaf75-2a10-4756-887f-30f76e4ee744"); // !!SNAPSHOT!!, DO NOT WORK ON "dataMap".
                 if (dataMap_snapshot != null){
                     Bukkit.getConsoleSender().sendMessage("Real Data created! Removing empty Player...");
                     dataMap.remove("738eaf75-2a10-4756-887f-30f76e4ee744");
                 }
+
                 saveData();
 
                 dataMap_snapshot = null; // remove data leakage
