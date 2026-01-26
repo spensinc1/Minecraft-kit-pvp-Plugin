@@ -134,8 +134,10 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
                     Bukkit.getServer().getConsoleSender().sendMessage("SAVED DATA MAP.");
 
-                    for (int i = 0; i < toDelete.toArray().length; i++) { // loops over all players to delete
-                        dataMap.remove(toDelete.get(i));
+                    if (!onlinePlayerArray.isEmpty()){
+                        for (int i = 0; i < toDelete.toArray().length; i++) { // loops over all players to delete
+                            dataMap.remove(toDelete.get(i));
+                        }
                     }
 
                 } catch (IOException e) {
@@ -320,11 +322,12 @@ public final class EasyPVP extends JavaPlugin implements Listener {
             for (Player p : Bukkit.getOnlinePlayers()){
                 loadData(p);
             }
+
             if (dataMap.get("738eaf75-2a10-4756-887f-30f76e4ee744") != null){ // if 738eaf75-2a10-4756-887f-30f76e4ee744 is still in the code:
-                dataMap_snapshot = dataMap; // copy datamap, we don't want to work on live data.
+                Map<String, PlayerData> dataMap_snapshot = dataMap; // copy datamap, we don't want to work on live data.
 
                 // this uuid is a banned account, we just need it for this purpose. we dont really care abt this data as it will never be used.
-                // TODO: this doesnt work with the database fix
+                // TODO: this is stupid way of doing this, as it creates unnecessary data. Doesnt transfer between instances, but still is bad and should be fixed, works tho.
 
                 dataMap_snapshot.remove("738eaf75-2a10-4756-887f-30f76e4ee744"); // !!SNAPSHOT!!, DO NOT WORK ON "dataMap".
                 if (dataMap_snapshot != null){
