@@ -1,6 +1,5 @@
 package org.radarw.easypvp;
 
-import com.google.gson.JsonObject;
 import org.bukkit.*;
 import org.bukkit.Bukkit;
 import org.bukkit.attribute.Attribute;
@@ -105,6 +104,13 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                     Bukkit.getServer().getConsoleSender().sendMessage("SOMETHING WENT WRONG SAVING CURRENT DATA PANIC PANIC PANIC");
                 }
 
+                List<String> onlinePlayerArray = new ArrayList<String>();
+                List<String> toDelete = new ArrayList<String>();
+
+                for (Player p : Bukkit.getOnlinePlayers()){
+                    onlinePlayerArray.add(p.getUniqueId().toString());
+                }
+
                 try (FileWriter writer = new FileWriter(dataFile)) {
                     for (String key : snapshot.keySet()){ // all data in the hash map // using "snapshot", but can be replaced with datamap.
                         json.remove(key);
@@ -119,10 +125,19 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
                         json.add(key, jsonObject);
                         Bukkit.getServer().getConsoleSender().sendMessage(key);
+
+                        if (!onlinePlayerArray.contains(key)){
+                            toDelete.add(key); // mark key to be deleted.
+                        }
                     }
                     gson.toJson(json, writer);
 
                     Bukkit.getServer().getConsoleSender().sendMessage("SAVED DATA MAP.");
+
+                    for (int i = 0; i < toDelete.toArray().length; i++) { // loops over all players to delete
+                        dataMap.remove(toDelete.get(i));
+                    }
+
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
