@@ -1,6 +1,5 @@
 package org.radarw.easypvp;
 
-import com.google.gson.JsonObject;
 import org.bukkit.*;
 import org.bukkit.Bukkit;
 import org.bukkit.attribute.Attribute;
@@ -27,24 +26,19 @@ import com.sk89q.worldedit.bukkit.BukkitAdapter;
 import com.sk89q.worldedit.math.BlockVector3;
 
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scoreboard.*;
 
-import javax.json.Json;
 import java.io.*;
-import java.lang.reflect.Type;
 import java.util.*;
 
 import static java.lang.Integer.parseInt;
 
 public final class EasyPVP extends JavaPlugin implements Listener {
     public ScoreboardManager manager; //
-    public Scoreboard board; //
-    public Team team; //
     private static EasyPVP instance;
     public int saveinterval = 5; // mins
 
@@ -92,7 +86,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
         new BukkitRunnable() {
             @Override
             public void run() { // for entry check aganst data file
-                Map<String, PlayerData> snapshot = dataMap;
+                Map<String, PlayerData> snapshot = new HashMap<>(dataMap);
                 JsonObject json = new JsonObject();
                 Gson gson = new Gson();
                 try (FileReader reader = new FileReader(dataFile)) { // get entire json object
@@ -103,6 +97,13 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
                 if (json.isEmpty()){
                     Bukkit.getServer().getConsoleSender().sendMessage("SOMETHING WENT WRONG SAVING CURRENT DATA PANIC PANIC PANIC");
+                }
+
+                List<String> onlinePlayerArray = new ArrayList<String>();
+                List<String> toDelete = new ArrayList<String>();
+
+                for (Player p : Bukkit.getOnlinePlayers()){
+                    onlinePlayerArray.add(p.getUniqueId().toString());
                 }
 
                 try (FileWriter writer = new FileWriter(dataFile)) {
@@ -118,11 +119,30 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                         jsonObject.addProperty("killStreak", pd.killStreak);
 
                         json.add(key, jsonObject);
-                        Bukkit.getServer().getConsoleSender().sendMessage(key);
+
+                        if (!onlinePlayerArray.contains(key)){
+                            toDelete.add(key); // mark key to be deleted.
+                        }
                     }
                     gson.toJson(json, writer);
 
                     Bukkit.getServer().getConsoleSender().sendMessage("SAVED DATA MAP.");
+
+                    if (!onlinePlayerArray.isEmpty()){
+                        for (int i = 0; i < toDelete.toArray().length; i++) { // loops over all players to delete
+                            dataMap.remove(toDelete.get(i));
+                        }
+                    }else{
+                        Bukkit.getServer().getConsoleSender().sendMessage("NO PLAYERS IN SERVER LIST");
+                    }
+
+                    if (!toDelete.isEmpty() && !onlinePlayerArray.isEmpty()){
+                        Bukkit.getServer().getConsoleSender().sendMessage("[DB] DROPPED PLAYERS:" + toDelete.toString());
+                    }
+
+                    toDelete.clear();
+                    onlinePlayerArray.clear();
+
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -147,11 +167,6 @@ public final class EasyPVP extends JavaPlugin implements Listener {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    public void unloadData(Player player){
-        saveData();
-        dataMap.remove(player.getUniqueId());
     }
 
     public void spawnMoneyItem(Location Loc, int amount){
@@ -228,7 +243,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
         return total;
     }
 
-    public static boolean removeItemAmount(Player player, int amount) {
+    public static void removeItemAmount(Player player, int amount) {
 
         ItemStack goldIngot = new ItemStack(Material.GOLD_INGOT);
         ItemMeta goldIngotMetadata = goldIngot.getItemMeta();
@@ -262,7 +277,6 @@ public final class EasyPVP extends JavaPlugin implements Listener {
             if (remaining <= 0) break;
         }
 
-        return remaining == 0; // true if fully removed
     }
 
     @Override
@@ -305,11 +319,12 @@ public final class EasyPVP extends JavaPlugin implements Listener {
             for (Player p : Bukkit.getOnlinePlayers()){
                 loadData(p);
             }
+
             if (dataMap.get("738eaf75-2a10-4756-887f-30f76e4ee744") != null){ // if 738eaf75-2a10-4756-887f-30f76e4ee744 is still in the code:
-                dataMap_snapshot = dataMap; // copy datamap, we don't want to work on live data.
+                Map<String, PlayerData> dataMap_snapshot = new HashMap<>(dataMap);; // copy datamap, we don't want to work on live data.
 
                 // this uuid is a banned account, we just need it for this purpose. we dont really care abt this data as it will never be used.
-                // TODO: this doesnt work with the database fix
+                // TODO: this is stupid way of doing this, as it creates unnecessary data. Doesnt transfer between instances, but still is bad and should be fixed, works tho.
 
                 dataMap_snapshot.remove("738eaf75-2a10-4756-887f-30f76e4ee744"); // !!SNAPSHOT!!, DO NOT WORK ON "dataMap".
                 if (dataMap_snapshot != null){
@@ -319,6 +334,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
                 saveData();
 
+                dataMap_snapshot.clear();
                 dataMap_snapshot = null; // remove data leakage
             }
             loadEnchantValues();
@@ -690,7 +706,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     if (getRegions(p, "pvparea") && !getRegions(p, "spawn") && p.getGameMode() == GameMode.SURVIVAL) {
-                        p.teleport(new Location(p.getWorld(), 15, -55, 5));
+                        p.teleport(new Location(p.getWorld(), p.getWorld().getSpawnLocation().getBlockX(), p.getWorld().getSpawnLocation().getBlockY(),  p.getWorld().getSpawnLocation().getBlockZ()));
                         p.sendMessage("§cYou have been teleported due to the arena closing..");
                     }
                 }
@@ -702,8 +718,8 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                     public void run(){
                         if (!areanstate){
                             for (Player p : Bukkit.getOnlinePlayers()) {
-                                if (getRegions(p, "pvparea") && !getRegions(p, "spawn") && p.getGameMode() == GameMode.SURVIVAL) {
-                                    p.teleport(new Location(p.getWorld(), 15, -55, 5));
+                                if (getRegions(p, "pvparea") && !getRegions(p, "spawn") && !p.isOp()) {
+                                    p.teleport(new Location(p.getWorld(), p.getWorld().getSpawnLocation().getBlockX(), p.getWorld().getSpawnLocation().getBlockY(),  p.getWorld().getSpawnLocation().getBlockZ()));
                                     p.sendMessage("§cYou have been teleported due to the arena closing..");
                                 }
                             }
@@ -839,7 +855,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player p = event.getPlayer();
         String uuid = p.getUniqueId().toString();
-
+        loadData(event.getPlayer());
         PlayerData data = dataMap.get(uuid);
         if (data == null && dataMap != null) {
             data = new PlayerData(p.getUniqueId(), 0, 0, 0, 0);
@@ -876,10 +892,8 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                 if (item != null && item.getType() != Material.AIR){
                     String key = "minecraft:" + item.getType().toString().toLowerCase();
                     toolValue = item_values.getOrDefault(key, 0);
-                    if (toolValue == 0){
-                        e.getPlayer().getInventory().addItem(item);
-                        continue;
-                    }
+
+                    if (toolValue == 0){e.getPlayer().getInventory().addItem(item);continue;}
 
                     if (toolValue > 0 && meta != null){
                         Enchantment[] enchants = meta.getEnchants().keySet().toArray(new Enchantment[0]);
@@ -901,7 +915,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                     }
                 }
                 int amount = item.getAmount();
-                TotalVal += ((enchant_value + toolValue) * amount) * (1-0.25); // times by num of items in the stack, per item slot. - take 25% off the price of the items.
+                TotalVal += ((enchant_value + toolValue) * amount) * (0.75); // times by num of items in the stack, per item slot. - take 25% off the price of the items.
                 // stupid way of doing this. but icba rn TODO: CHANGE THIS, ADD ANOTHER ITEM SCHEMA.
             }
             String uuid = e.getPlayer().getUniqueId().toString();
