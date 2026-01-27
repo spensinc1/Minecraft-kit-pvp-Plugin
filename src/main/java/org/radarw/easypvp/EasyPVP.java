@@ -167,8 +167,8 @@ public final class EasyPVP extends JavaPlugin implements Listener {
     }
 
     public void unloadData(Player player){
-        saveData();
-        dataMap.remove(player.getUniqueId());
+        //saveData();
+        //dataMap.remove(player.getUniqueId()); // test this.
     }
 
     public void spawnMoneyItem(Location Loc, int amount){
@@ -708,7 +708,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     if (getRegions(p, "pvparea") && !getRegions(p, "spawn") && p.getGameMode() == GameMode.SURVIVAL) {
-                        p.teleport(new Location(p.getWorld(), 15, -55, 5));
+                        p.teleport(new Location(p.getWorld(), p.getWorld().getSpawnLocation().getBlockX(), p.getWorld().getSpawnLocation().getBlockY(),  p.getWorld().getSpawnLocation().getBlockZ()));
                         p.sendMessage("§cYou have been teleported due to the arena closing..");
                     }
                 }
@@ -720,7 +720,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                     public void run(){
                         if (!areanstate){
                             for (Player p : Bukkit.getOnlinePlayers()) {
-                                if (getRegions(p, "pvparea") && !getRegions(p, "spawn") && p.getGameMode() == GameMode.SURVIVAL) {
+                                if (getRegions(p, "pvparea") && !getRegions(p, "spawn") && !p.isOp()) {
                                     p.teleport(new Location(p.getWorld(), 15, -55, 5));
                                     p.sendMessage("§cYou have been teleported due to the arena closing..");
                                 }
