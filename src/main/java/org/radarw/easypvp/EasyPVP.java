@@ -1,5 +1,6 @@
 package org.radarw.easypvp;
 
+import com.google.gson.stream.JsonWriter;
 import org.bukkit.*;
 import org.bukkit.Bukkit;
 import org.bukkit.attribute.Attribute;
@@ -33,6 +34,9 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scoreboard.*;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 
 import static java.lang.Integer.parseInt;
@@ -90,7 +94,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                 JsonObject json = new JsonObject();
                 Gson gson = new Gson();
                 try (FileReader reader = new FileReader(dataFile)) { // get entire json object
-                     json = gson.fromJson(reader, JsonObject.class);
+                    json = gson.fromJson(reader, JsonObject.class);
                 }catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -106,7 +110,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                     onlinePlayerArray.add(p.getUniqueId().toString());
                 }
 
-                try (FileWriter writer = new FileWriter(dataFile)) {
+                try{
                     for (String key : snapshot.keySet()){ // all data in the hash map // using "snapshot", but can be replaced with datamap.
                         json.remove(key);
                         PlayerData pd = snapshot.get(key);
@@ -121,10 +125,31 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                         json.add(key, jsonObject);
 
                         if (!onlinePlayerArray.contains(key)){
-                            toDelete.add(key); // mark key to be deleted.
+                            toDelete.add(key); // mark uuid (key) to be deleted from data map AFTER it was saved.
                         }
                     }
-                    gson.toJson(json, writer);
+
+                    Path temp = Files.createTempFile( // atomic temp file
+                            Path.of(dataFile.getParent()),
+                            "data",
+                            ".tmp"
+                    );
+
+                    try (FileWriter tempW = new FileWriter("data.tmp")){
+                        gson.toJson(json, new JsonWriter(tempW));
+                    }
+
+                    try{
+                        Files.move(
+                                temp,
+                                dataFile.toPath(),
+                                StandardCopyOption.REPLACE_EXISTING,
+                                StandardCopyOption.ATOMIC_MOVE
+                        );
+                    }finally {
+                        // Cleanup in case something failed before move
+                        Files.deleteIfExists(temp);
+                    }
 
                     Bukkit.getServer().getConsoleSender().sendMessage("SAVED DATA MAP.");
 
@@ -308,7 +333,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
                 Map<String, PlayerData> snapshot = dataMap;
                 try (FileWriter writer = new FileWriter(dataFile)) { // manually save map
-                    gson.toJson(snapshot, writer);
+                    gson.toJson(dataMap, writer);
                     Bukkit.getServer().getConsoleSender().sendMessage("SAVED DATA MAP MANUALLY.");
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -316,7 +341,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                 snapshot.clear();
                 snapshot = null;
 
-                saveData();
+                //saveData(); //TODO
 
                 Bukkit.getConsoleSender().sendMessage("CREATED DATAMAP & DATAFILE!");
             } catch (IOException e) {
