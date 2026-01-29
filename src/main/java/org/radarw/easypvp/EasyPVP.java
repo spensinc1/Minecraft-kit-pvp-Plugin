@@ -130,7 +130,17 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
                     if (!onlinePlayerArray.isEmpty()){
                         for (int i = 0; i < toDelete.toArray().length; i++) { // loops over all players to delete
-                            dataMap.remove(toDelete.get(i));
+                            snapshot.remove(toDelete.get(i));
+
+                            if (snapshot == null){
+                                PlayerData data = null; // wouldn't exist as this is a new file
+                                UUID fakePlayer = UUID.fromString("738eaf75-2a10-4756-887f-30f76e4ee744");
+                                data = new PlayerData(fakePlayer, 0, 0, 0, 0);
+                                dataMap.put(String.valueOf(fakePlayer), data);
+                                break;
+                            }else{
+                                dataMap.remove(toDelete.get(i));
+                            }
                         }
                     }else{
                         Bukkit.getServer().getConsoleSender().sendMessage("NO PLAYERS IN SERVER LIST");
@@ -201,7 +211,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
     public boolean canItemFit(Player p, int amount, int stackSize) {
         ItemStack goldIngot = new ItemStack(Material.GOLD_INGOT); // was from preexisting code, this DOESNT give VALID money.
         ItemMeta meta = goldIngot.getItemMeta();
-        meta.setDisplayName(ChatColor.YELLOW + "THIS SHOULD BE HERE");
+        meta.setDisplayName(ChatColor.YELLOW + "THIS SHOULDNT BE HERE");
         meta.addEnchant(Enchantment.EFFICIENCY, 10, true);
         goldIngot.setItemMeta(meta);
 
