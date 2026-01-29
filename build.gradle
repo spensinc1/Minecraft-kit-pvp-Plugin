@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'org.radarw'
-version = '1-RELEASE'
+version = '1.6-DEVELOPMENT'
 
 repositories {
     mavenCentral()

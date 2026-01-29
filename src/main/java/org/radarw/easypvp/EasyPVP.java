@@ -99,8 +99,9 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                     e.printStackTrace();
                 }
 
-                if (json.isEmpty()){
+                if (json == null){
                     Bukkit.getServer().getConsoleSender().sendMessage("SOMETHING WENT WRONG SAVING CURRENT DATA PANIC PANIC PANIC");
+                    return;
                 }
 
                 List<String> onlinePlayerArray = new ArrayList<String>();
@@ -130,13 +131,13 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                     }
 
                     Path temp = Files.createTempFile( // atomic temp file
-                            Path.of(dataFile.getParent()),
-                            "data",
+                            getDataFolder().toPath(),
+                            "TEMP_DATA",
                             ".tmp"
                     );
 
-                    try (FileWriter tempW = new FileWriter("data.tmp")){
-                        gson.toJson(json, new JsonWriter(tempW));
+                    try (BufferedWriter writer = Files.newBufferedWriter(temp)) {
+                        gson.toJson(json, writer);
                     }
 
                     try{
@@ -147,7 +148,6 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                                 StandardCopyOption.ATOMIC_MOVE
                         );
                     }finally {
-                        // Cleanup in case something failed before move
                         Files.deleteIfExists(temp);
                     }
 
@@ -158,7 +158,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
                             snapshot.remove(toDelete.get(i));
 
                             if (snapshot == null){
-                                PlayerData data = null; // wouldn't exist as this is a new file
+                                PlayerData data = null; // wouldn't exist as this is a new // ile
                                 UUID fakePlayer = UUID.fromString("738eaf75-2a10-4756-887f-30f76e4ee744");
                                 data = new PlayerData(fakePlayer, 0, 0, 0, 0);
                                 dataMap.put(String.valueOf(fakePlayer), data);
@@ -198,7 +198,6 @@ public final class EasyPVP extends JavaPlugin implements Listener {
 
             PlayerData data = gson.fromJson(playerJson, PlayerData.class);
             dataMap.put(String.valueOf(player.getUniqueId()), data);
-
         } catch (IOException e) {
             e.printStackTrace();
         }
