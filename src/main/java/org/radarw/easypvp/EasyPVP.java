@@ -394,6 +394,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
         if (lore != null){
             meta.setLore(Arrays.asList(lore));
         }
+
         item.setItemMeta(meta);
         return item;
     }
@@ -935,8 +936,7 @@ public final class EasyPVP extends JavaPlugin implements Listener {
         Player p = (Player) e.getWhoClicked();
 
         if (title.equals("Shop Menu")) {
-
-            String[] sixteen_sacks = {"arrow"};
+            String[] sixteen_sacks = {"arrow", "golden_apple"};
 
             e.setCancelled(true);
 
